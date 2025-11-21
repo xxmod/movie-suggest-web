@@ -53,6 +53,20 @@ async function writeWishlist(data) {
   await fs.writeFile(wishlistPath, JSON.stringify(data, null, 2), 'utf-8');
 }
 
+async function removeWishlistItems(tmdbIds) {
+  const normalized = tmdbIds.map(id => String(id));
+  const wishlist = await readWishlist();
+  const targetIds = new Set(normalized);
+  const updated = wishlist.filter(item => !targetIds.has(String(item.tmdbId)));
+  const removedCount = wishlist.length - updated.length;
+
+  if (removedCount > 0) {
+    await writeWishlist(updated);
+  }
+
+  return { removedCount };
+}
+
 async function readEmailConfig() {
   await ensureEmailConfigFile();
   const raw = await fs.readFile(emailConfigPath, 'utf-8');
@@ -254,19 +268,63 @@ app.post('/api/wishlist', async (req, res) => {
 });
 
 app.delete('/api/wishlist/:tmdbId', async (req, res) => {
-  try {
-    const wishlist = await readWishlist();
-    const updated = wishlist.filter(item => String(item.tmdbId) !== req.params.tmdbId);
+  if (!ADMIN_PASSWORD) {
+    return res.status(500).json({ message: 'ADMIN_PASSWORD is not configured.' });
+  }
 
-    if (updated.length === wishlist.length) {
+  const { password } = req.body || {};
+  if (!password) {
+    return res.status(400).json({ message: 'Password is required.' });
+  }
+
+  if (password !== ADMIN_PASSWORD) {
+    return res.status(403).json({ message: '密码错误。' });
+  }
+
+  try {
+    const { removedCount } = await removeWishlistItems([req.params.tmdbId]);
+    if (!removedCount) {
       return res.status(404).json({ message: 'Item not found.' });
     }
 
-    await writeWishlist(updated);
     res.json({ message: 'Item removed.' });
   } catch (error) {
     console.error('Failed to delete wishlist item:', error.message);
     res.status(500).json({ message: 'Unable to delete wishlist item.' });
+  }
+});
+
+app.delete('/api/wishlist', async (req, res) => {
+  if (!ADMIN_PASSWORD) {
+    return res.status(500).json({ message: 'ADMIN_PASSWORD is not configured.' });
+  }
+
+  const body = req.body || {};
+  const tmdbIds = Array.isArray(body.tmdbIds) ? body.tmdbIds.filter(Boolean) : [];
+  const password = body.password;
+
+  if (!tmdbIds.length) {
+    return res.status(400).json({ message: 'tmdbIds must be a non-empty array.' });
+  }
+
+  if (!password) {
+    return res.status(400).json({ message: 'Password is required.' });
+  }
+
+  if (password !== ADMIN_PASSWORD) {
+    return res.status(403).json({ message: '密码错误。' });
+  }
+
+  try {
+    const { removedCount } = await removeWishlistItems(tmdbIds);
+    if (!removedCount) {
+      return res.status(404).json({ message: 'No matching items found.' });
+    }
+
+    res.json({ message: `Removed ${removedCount} item${removedCount > 1 ? 's' : ''}.`, removed: removedCount });
+  } catch (error) {
+    console.error('Failed to delete wishlist items:', error.message);
+    res.status(500).json({ message: 'Unable to delete wishlist items.' });
   }
 });
 

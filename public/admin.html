@@ -19,12 +19,17 @@
   <main>
     <section>
       <h2>当前愿望单</h2>
-      <form id="clearForm" style="display:flex;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap;">
-        <input type="password" id="adminPassword" placeholder="输入后台密码以清空愿望单" required style="flex:1;min-width:240px;">
-        <button type="submit">清空愿望单</button>
-      </form>
       <p id="clearStatus" style="min-height:1.5rem;color:#93c5fd;margin-top:-0.5rem;"></p>
       <div id="adminWishlist" class="wishlist empty-state">加载中...</div>
+      <div id="wishlistActions" style="display:flex;flex-wrap:wrap;gap:0.75rem;align-items:center;margin-top:0.5rem;">
+        <input type="password" id="deleteAdminPassword" placeholder="输入后台密码以删除选中的条目" style="flex:1;min-width:240px;">
+        <div style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+          <button type="button" id="deleteSelectedBtn" disabled>删除选中条目</button>
+          <button type="button" id="selectAllBtn">全选</button>
+          <button type="button" id="clearSelectionBtn" disabled>取消选择</button>
+        </div>
+        <p id="deleteStatus" style="margin:0;min-height:1.5rem;color:#f87171;"></p>
+      </div>
     </section>
 
     <section>
