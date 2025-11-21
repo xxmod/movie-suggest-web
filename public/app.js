@@ -2,6 +2,7 @@ const searchForm = document.getElementById('searchForm');
 const searchInput = document.getElementById('searchInput');
 const resultsContainer = document.getElementById('results');
 const wishlistContainer = document.getElementById('wishlist');
+const addedContainer = document.getElementById('addedList');
 
 let wishlistCache = [];
 
@@ -29,10 +30,11 @@ async function fetchWishlist() {
     const response = await fetch('/api/wishlist');
     if (!response.ok) throw new Error('Failed to load wishlist');
     wishlistCache = await response.json();
-    renderWishlist();
+    renderWishlistSections();
   } catch (error) {
     console.error(error);
-    setWishlistState('无法加载愿望单');
+    setContainerState(wishlistContainer, '无法加载愿望单');
+    setContainerState(addedContainer, '无法加载已添加列表', 'wishlist added-list empty-state');
   }
 }
 
@@ -121,18 +123,46 @@ async function addToWishlist(item, buttonEl) {
   }
 }
 
-function renderWishlist() {
-  if (!wishlistCache.length) {
-    setWishlistState('愿望单为空，去添加一些吧！');
+function renderWishlistSections() {
+  const pendingItems = wishlistCache.filter(item => !item.addedAt);
+  const addedItems = wishlistCache.filter(item => item.addedAt);
+
+  renderCardList(pendingItems, wishlistContainer, '愿望单为空，去添加一些吧！', {
+    metaLabel: '收藏时间',
+    metaKey: 'createdAt',
+    emptyClass: 'wishlist empty-state',
+    containerClass: 'wishlist'
+  });
+  renderCardList(addedItems, addedContainer, '还没有标记“已添加”的作品。', {
+    metaLabel: '标记时间',
+    metaKey: 'addedAt',
+    cardClass: 'added-card',
+    emptyClass: 'wishlist added-list empty-state',
+    containerClass: 'wishlist added-list'
+  });
+}
+
+function renderCardList(items, container, emptyMessage, options = {}) {
+  if (!container) return;
+  const {
+    metaLabel = '时间',
+    metaKey = 'createdAt',
+    cardClass = '',
+    emptyClass = 'wishlist empty-state',
+    containerClass = 'wishlist'
+  } = options;
+
+  if (!items.length) {
+    setContainerState(container, emptyMessage, emptyClass);
     return;
   }
 
-  wishlistContainer.classList.remove('empty-state');
-  wishlistContainer.innerHTML = '';
+  container.className = containerClass;
+  container.innerHTML = '';
 
-  wishlistCache.slice().reverse().forEach(item => {
+  items.slice().reverse().forEach(item => {
     const card = document.createElement('div');
-    card.className = 'card';
+    card.className = `card ${cardClass}`.trim();
 
     const content = document.createElement('div');
     content.className = 'card-content';
@@ -143,12 +173,14 @@ function renderWishlist() {
 
     const meta = document.createElement('p');
     meta.className = 'card-meta';
-    meta.textContent = `IMDb：${item.imdbId || '暂无'} ｜ 收藏时间：${new Date(item.createdAt).toLocaleString()}`;
+    const timestamp = item?.[metaKey];
+    const timeText = timestamp ? new Date(timestamp).toLocaleString() : '暂无';
+    meta.textContent = `IMDb：${item.imdbId || '暂无'} ｜ ${metaLabel}：${timeText}`;
 
     content.appendChild(title);
     content.appendChild(meta);
     card.appendChild(content);
-    wishlistContainer.appendChild(card);
+    container.appendChild(card);
   });
 }
 
@@ -157,9 +189,10 @@ function setResultsState(message) {
   resultsContainer.textContent = message;
 }
 
-function setWishlistState(message) {
-  wishlistContainer.className = 'wishlist empty-state';
-  wishlistContainer.textContent = message;
+function setContainerState(container, message, className = 'wishlist empty-state') {
+  if (!container) return;
+  container.className = className;
+  container.textContent = message;
 }
 
 fetchWishlist();

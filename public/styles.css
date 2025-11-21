@@ -111,6 +111,11 @@ button:hover:not(:disabled) {
   gap: 1rem;
 }
 
+.wishlist.added-list {
+  border-left: 3px solid #86efac;
+  padding-left: 0.75rem;
+}
+
 .card {
   background: var(--card-bg);
   padding: 1rem;
@@ -119,6 +124,12 @@ button:hover:not(:disabled) {
   display: flex;
   gap: 1rem;
   box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+}
+
+.card.added-card {
+  background: #f0fdf4;
+  border-color: #86efac;
+  box-shadow: 0 10px 25px rgba(34, 197, 94, 0.15);
 }
 
 .card img {

@@ -9,6 +9,10 @@
     header p { margin-top: 0.5rem; }
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: 0.75rem; border-bottom: 1px solid rgba(15,23,42,0.08); text-align: left; }
+    tr.added-row { background: #f0fdf4; }
+    .status-pill { display:inline-flex; align-items:center; padding:0.15rem 0.45rem; border-radius:999px; font-size:0.8rem; }
+    .status-pill.added { background:#bbf7d0; color:#166534; }
+    .status-pill.pending { background:#e2e8f0; color:#475569; }
   </style>
 </head>
 <body>
@@ -22,13 +26,15 @@
       <p id="clearStatus" style="min-height:1.5rem;color:#93c5fd;margin-top:-0.5rem;"></p>
       <div id="adminWishlist" class="wishlist empty-state">加载中...</div>
       <div id="wishlistActions" style="display:flex;flex-wrap:wrap;gap:0.75rem;align-items:center;margin-top:0.5rem;">
-        <input type="password" id="deleteAdminPassword" placeholder="输入后台密码以删除选中的条目" style="flex:1;min-width:240px;">
+        <input type="password" id="deleteAdminPassword" placeholder="输入后台密码以进行操作" style="flex:1;min-width:240px;">
         <div style="display:flex;flex-wrap:wrap;gap:0.5rem;">
           <button type="button" id="deleteSelectedBtn" disabled>删除选中条目</button>
+          <button type="button" id="markAddedBtn" disabled>标记为已添加</button>
           <button type="button" id="selectAllBtn">全选</button>
           <button type="button" id="clearSelectionBtn" disabled>取消选择</button>
         </div>
         <p id="deleteStatus" style="margin:0;min-height:1.5rem;color:#f87171;"></p>
+        <p id="markStatus" style="margin:0;min-height:1.5rem;color:#10b981;"></p>
       </div>
     </section>
 

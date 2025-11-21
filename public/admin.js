@@ -7,6 +7,8 @@ const selectAllBtn = document.getElementById('selectAllBtn');
 const clearSelectionBtn = document.getElementById('clearSelectionBtn');
 const deleteStatus = document.getElementById('deleteStatus');
 const deletePasswordInput = document.getElementById('deleteAdminPassword');
+const markAddedBtn = document.getElementById('markAddedBtn');
+const markStatus = document.getElementById('markStatus');
 const emailStatus = document.getElementById('emailStatus');
 const emailForm = document.getElementById('emailConfigForm');
 const emailAccountInput = document.getElementById('emailAccount');
@@ -61,7 +63,7 @@ function renderWishlistTable() {
   selectTh.appendChild(masterCheckbox);
   headerRow.appendChild(selectTh);
 
-  ['名称', '类型', 'IMDb ID', '收藏时间'].forEach(label => {
+  ['名称', '类型', '状态', 'IMDb ID', '收藏时间'].forEach(label => {
     const th = document.createElement('th');
     th.textContent = label;
     headerRow.appendChild(th);
@@ -73,6 +75,9 @@ function renderWishlistTable() {
   const tbody = document.createElement('tbody');
   visibleItems.forEach(item => {
     const row = document.createElement('tr');
+    if (item.addedAt) {
+      row.classList.add('added-row');
+    }
     const tmdbId = String(item.tmdbId);
 
     const selectTd = document.createElement('td');
@@ -87,6 +92,7 @@ function renderWishlistTable() {
         selectedTmdbIds.delete(tmdbId);
       }
       setDeleteStatus('');
+      setMarkStatus('');
       updateSelectionUi();
       syncMasterCheckbox(visibleItems.length);
     });
@@ -100,6 +106,16 @@ function renderWishlistTable() {
     const typeTd = document.createElement('td');
     typeTd.textContent = item.mediaType === 'movie' ? '电影' : '剧集';
     row.appendChild(typeTd);
+
+    const statusTd = document.createElement('td');
+    const pill = document.createElement('span');
+    pill.className = `status-pill ${item.addedAt ? 'added' : 'pending'}`;
+    pill.textContent = item.addedAt ? '已添加' : '待添加';
+    if (item.addedAt) {
+      pill.title = `标记时间：${new Date(item.addedAt).toLocaleString()}`;
+    }
+    statusTd.appendChild(pill);
+    row.appendChild(statusTd);
 
     const imdbTd = document.createElement('td');
     imdbTd.textContent = item.imdbId || '暂无';
@@ -127,6 +143,7 @@ function handleMasterToggle(event) {
     selectedTmdbIds.clear();
   }
   setDeleteStatus('');
+  setMarkStatus('');
   renderWishlistTable();
   updateSelectionUi();
 }
@@ -149,9 +166,13 @@ function updateSelectionUi() {
   const hasItems = wishlistData.length > 0;
   const hasSelection = selectedTmdbIds.size > 0;
   const hasPassword = deletePasswordInput ? Boolean(deletePasswordInput.value.trim()) : true;
+  const hasMarkableSelection = wishlistData.some(item => selectedTmdbIds.has(String(item.tmdbId)) && !item.addedAt);
 
   if (deleteSelectedBtn) {
     deleteSelectedBtn.disabled = !(hasSelection && hasPassword);
+  }
+  if (markAddedBtn) {
+    markAddedBtn.disabled = !(hasPassword && hasMarkableSelection);
   }
   if (selectAllBtn) {
     selectAllBtn.disabled = !hasItems;
@@ -165,6 +186,12 @@ function setDeleteStatus(message, color = '#f87171') {
   if (!deleteStatus) return;
   deleteStatus.textContent = message;
   deleteStatus.style.color = message ? color : '#f87171';
+}
+
+function setMarkStatus(message, color = '#10b981') {
+  if (!markStatus) return;
+  markStatus.textContent = message;
+  markStatus.style.color = message ? color : '#10b981';
 }
 
 async function clearWishlist(password) {
@@ -190,6 +217,21 @@ async function deleteWishlistItems(tmdbIds, password) {
   if (!response.ok) {
     const { message } = await response.json().catch(() => ({ message: '删除失败' }));
     throw new Error(message || '删除失败');
+  }
+
+  return response.json();
+}
+
+async function markWishlistItems(tmdbIds, password) {
+  const response = await fetch('/api/wishlist/added', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tmdbIds, password })
+  });
+
+  if (!response.ok) {
+    const { message } = await response.json().catch(() => ({ message: '标记失败' }));
+    throw new Error(message || '标记失败');
   }
 
   return response.json();
@@ -237,6 +279,7 @@ if (selectAllBtn) {
     if (!wishlistData.length) return;
     wishlistData.forEach(item => selectedTmdbIds.add(String(item.tmdbId)));
     setDeleteStatus('');
+    setMarkStatus('');
     renderWishlistTable();
     updateSelectionUi();
   });
@@ -246,6 +289,7 @@ if (clearSelectionBtn) {
   clearSelectionBtn.addEventListener('click', () => {
     selectedTmdbIds.clear();
     setDeleteStatus('');
+    setMarkStatus('');
     renderWishlistTable();
     updateSelectionUi();
   });
@@ -266,6 +310,7 @@ if (deleteSelectedBtn) {
     deleteSelectedBtn.disabled = true;
     deleteSelectedBtn.textContent = '删除中...';
     setDeleteStatus('');
+    setMarkStatus('');
 
     try {
       const result = await deleteWishlistItems(ids, password);
@@ -288,7 +333,50 @@ if (deleteSelectedBtn) {
 if (deletePasswordInput) {
   deletePasswordInput.addEventListener('input', () => {
     setDeleteStatus('');
+    setMarkStatus('');
     updateSelectionUi();
+  });
+}
+
+if (markAddedBtn) {
+  markAddedBtn.addEventListener('click', async () => {
+    const ids = Array.from(selectedTmdbIds);
+    if (!ids.length) return;
+
+    const password = deletePasswordInput ? deletePasswordInput.value.trim() : '';
+    if (!password) {
+      setMarkStatus('请输入后台密码。', '#f97316');
+      deletePasswordInput?.focus();
+      return;
+    }
+
+    const markableIds = wishlistData
+      .filter(item => !item.addedAt && ids.includes(String(item.tmdbId)))
+      .map(item => String(item.tmdbId));
+
+    if (!markableIds.length) {
+      setMarkStatus('选中的条目已全部标记。', '#38bdf8');
+      return;
+    }
+
+    markAddedBtn.disabled = true;
+    markAddedBtn.textContent = '标记中...';
+    setMarkStatus('');
+
+    try {
+      const result = await markWishlistItems(markableIds, password);
+      setMarkStatus(result?.message || `已标记 ${markableIds.length} 项。`, '#10b981');
+      if (deletePasswordInput) {
+        deletePasswordInput.value = '';
+      }
+      selectedTmdbIds.clear();
+      await loadWishlist();
+    } catch (error) {
+      setMarkStatus(error.message || '标记失败', '#ef4444');
+    } finally {
+      markAddedBtn.textContent = '标记为已添加';
+      updateSelectionUi();
+    }
   });
 }
 

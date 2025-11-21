@@ -46,7 +46,15 @@ async function ensureEmailConfigFile() {
 async function readWishlist() {
   await ensureWishlistFile();
   const raw = await fs.readFile(wishlistPath, 'utf-8');
-  return JSON.parse(raw);
+  const parsed = JSON.parse(raw || '[]');
+  if (!Array.isArray(parsed)) {
+    return [];
+  }
+
+  return parsed.map(item => ({
+    ...item,
+    addedAt: item?.addedAt ?? null
+  }));
 }
 
 async function writeWishlist(data) {
@@ -65,6 +73,30 @@ async function removeWishlistItems(tmdbIds) {
   }
 
   return { removedCount };
+}
+
+async function markWishlistItemsAdded(tmdbIds) {
+  const normalized = tmdbIds.map(id => String(id));
+  const targetIds = new Set(normalized);
+  const wishlist = await readWishlist();
+  let updatedCount = 0;
+
+  const updated = wishlist.map(item => {
+    if (targetIds.has(String(item.tmdbId)) && !item.addedAt) {
+      updatedCount += 1;
+      return {
+        ...item,
+        addedAt: new Date().toISOString()
+      };
+    }
+    return item;
+  });
+
+  if (updatedCount > 0) {
+    await writeWishlist(updated);
+  }
+
+  return { updatedCount };
 }
 
 async function readEmailConfig() {
@@ -253,7 +285,8 @@ app.post('/api/wishlist', async (req, res) => {
       title,
       mediaType,
       imdbId: imdbId || null,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      addedAt: null
     };
 
     wishlist.push(newEntry);
@@ -325,6 +358,40 @@ app.delete('/api/wishlist', async (req, res) => {
   } catch (error) {
     console.error('Failed to delete wishlist items:', error.message);
     res.status(500).json({ message: 'Unable to delete wishlist items.' });
+  }
+});
+
+app.patch('/api/wishlist/added', async (req, res) => {
+  if (!ADMIN_PASSWORD) {
+    return res.status(500).json({ message: 'ADMIN_PASSWORD is not configured.' });
+  }
+
+  const body = req.body || {};
+  const tmdbIds = Array.isArray(body.tmdbIds) ? body.tmdbIds.filter(Boolean) : [];
+  const password = body.password;
+
+  if (!tmdbIds.length) {
+    return res.status(400).json({ message: 'tmdbIds must be a non-empty array.' });
+  }
+
+  if (!password) {
+    return res.status(400).json({ message: 'Password is required.' });
+  }
+
+  if (password !== ADMIN_PASSWORD) {
+    return res.status(403).json({ message: '密码错误。' });
+  }
+
+  try {
+    const { updatedCount } = await markWishlistItemsAdded(tmdbIds);
+    if (!updatedCount) {
+      return res.json({ message: '选中的条目已全部标记过。', updated: 0 });
+    }
+
+    res.json({ message: `已标记 ${updatedCount} 项为已添加。`, updated: updatedCount });
+  } catch (error) {
+    console.error('Failed to mark wishlist items as added:', error.message);
+    res.status(500).json({ message: 'Unable to mark wishlist items as added.' });
   }
 });
 
