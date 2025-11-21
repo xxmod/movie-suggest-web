@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import nodemailer from 'nodemailer';
 
 dotenv.config();
 
@@ -15,7 +16,13 @@ const PORT = process.env.PORT || 3000;
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+const MAIL_HOST = process.env.MAIL_HOST || 'smtp.gmail.com';
+const MAIL_PORT = Number(process.env.MAIL_PORT || 465);
+const MAIL_SECURE = process.env.MAIL_SECURE ? process.env.MAIL_SECURE === 'true' : true;
+const MAIL_NOTIFY_TO = process.env.MAIL_NOTIFY_TO || null;
+const MAIL_FROM_NAME = process.env.MAIL_FROM_NAME || 'Movie Wishlist Bot';
 const wishlistPath = path.join(__dirname, 'data', 'wishlist.json');
+const emailConfigPath = path.join(__dirname, 'data', 'email-config.json');
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -25,6 +32,14 @@ async function ensureWishlistFile() {
     await fs.access(wishlistPath);
   } catch {
     await fs.writeFile(wishlistPath, '[]', 'utf-8');
+  }
+}
+
+async function ensureEmailConfigFile() {
+  try {
+    await fs.access(emailConfigPath);
+  } catch {
+    await fs.writeFile(emailConfigPath, JSON.stringify({ email: null, password: null }, null, 2), 'utf-8');
   }
 }
 
@@ -38,6 +53,28 @@ async function writeWishlist(data) {
   await fs.writeFile(wishlistPath, JSON.stringify(data, null, 2), 'utf-8');
 }
 
+async function readEmailConfig() {
+  await ensureEmailConfigFile();
+  const raw = await fs.readFile(emailConfigPath, 'utf-8');
+  return JSON.parse(raw);
+}
+
+async function writeEmailConfig(config) {
+  await fs.writeFile(emailConfigPath, JSON.stringify(config, null, 2), 'utf-8');
+}
+
+function isEmailConfigured(config) {
+  return Boolean(config?.email && config?.password);
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 async function fetchImdbId(mediaType, tmdbId) {
   try {
     const { data } = await axios.get(`${TMDB_BASE_URL}/${mediaType}/${tmdbId}/external_ids`, {
@@ -47,6 +84,48 @@ async function fetchImdbId(mediaType, tmdbId) {
   } catch (error) {
     console.error('Failed to fetch imdb id', error.message);
     return null;
+  }
+}
+
+async function notifyAdmin(newEntry) {
+  const config = await readEmailConfig();
+  if (!isEmailConfigured(config)) {
+    console.warn('Email notification is not configured. Skipping notification.');
+    return;
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: MAIL_HOST,
+      port: MAIL_PORT,
+      secure: MAIL_SECURE,
+      auth: {
+        user: config.email,
+        pass: config.password
+      }
+    });
+
+    const toAddress = MAIL_NOTIFY_TO || config.email;
+    const subject = `新增愿望单：${newEntry.title}`;
+    const escapedSubject = escapeHtml(subject);
+    const lines = [
+      `媒体类型：${newEntry.mediaType === 'movie' ? '电影' : '剧集'}`,
+      `TMDB ID：${newEntry.tmdbId}`,
+      `IMDb ID：${newEntry.imdbId || '暂无'}`,
+      `加入时间：${newEntry.createdAt}`
+    ];
+
+    await transporter.sendMail({
+      from: `${MAIL_FROM_NAME} <${config.email}>`,
+      to: toAddress,
+      subject,
+      text: `${subject}\n${lines.join('\n')}`,
+      html: `<p>${escapedSubject}</p><ul>${lines.map(line => `<li>${escapeHtml(line)}</li>`).join('')}</ul>`
+    });
+
+    console.info(`Notification email sent to ${toAddress} for "${newEntry.title}".`);
+  } catch (error) {
+    console.error('Failed to send notification email:', error.message);
   }
 }
 
@@ -105,6 +184,42 @@ app.get('/api/wishlist', async (_req, res) => {
   }
 });
 
+app.get('/api/email-config', async (_req, res) => {
+  try {
+    const config = await readEmailConfig();
+    res.json({
+      email: config.email,
+      configured: isEmailConfigured(config)
+    });
+  } catch (error) {
+    console.error('Failed to read email config:', error.message);
+    res.status(500).json({ message: 'Unable to read email config.' });
+  }
+});
+
+app.post('/api/email-config', async (req, res) => {
+  if (!ADMIN_PASSWORD) {
+    return res.status(500).json({ message: 'ADMIN_PASSWORD is not configured.' });
+  }
+
+  const { adminPassword, email, password } = req.body || {};
+  if (!adminPassword || !email || !password) {
+    return res.status(400).json({ message: 'adminPassword, email, and password are required.' });
+  }
+
+  if (adminPassword !== ADMIN_PASSWORD) {
+    return res.status(403).json({ message: '密码错误。' });
+  }
+
+  try {
+    await writeEmailConfig({ email, password });
+    res.json({ message: 'Email configuration updated.' });
+  } catch (error) {
+    console.error('Failed to update email config:', error.message);
+    res.status(500).json({ message: 'Unable to update email config.' });
+  }
+});
+
 app.post('/api/wishlist', async (req, res) => {
   const { tmdbId, title, mediaType, imdbId } = req.body || {};
 
@@ -130,6 +245,8 @@ app.post('/api/wishlist', async (req, res) => {
     wishlist.push(newEntry);
     await writeWishlist(wishlist);
     res.status(201).json(newEntry);
+
+    notifyAdmin(newEntry);
   } catch (error) {
     console.error('Failed to update wishlist:', error.message);
     res.status(500).json({ message: 'Unable to update wishlist.' });

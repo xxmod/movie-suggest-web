@@ -2,6 +2,12 @@ const adminContainer = document.getElementById('adminWishlist');
 const clearForm = document.getElementById('clearForm');
 const passwordInput = document.getElementById('adminPassword');
 const clearStatus = document.getElementById('clearStatus');
+const emailStatus = document.getElementById('emailStatus');
+const emailForm = document.getElementById('emailConfigForm');
+const emailAccountInput = document.getElementById('emailAccount');
+const emailPasswordInput = document.getElementById('emailPassword');
+const emailAdminPasswordInput = document.getElementById('emailAdminPassword');
+const emailSaveStatus = document.getElementById('emailSaveStatus');
 
 async function loadWishlist() {
   try {
@@ -56,6 +62,43 @@ async function clearWishlist(password) {
   }
 }
 
+async function loadEmailConfig() {
+  if (!emailStatus) return;
+  try {
+    const response = await fetch('/api/email-config');
+    if (!response.ok) throw new Error('加载失败');
+    const data = await response.json();
+
+    emailStatus.classList.remove('empty-state');
+    if (data.configured && data.email) {
+      emailStatus.textContent = `当前邮箱：${data.email}`;
+    } else {
+      emailStatus.classList.add('empty-state');
+      emailStatus.textContent = '尚未配置邮箱通知。';
+    }
+
+    if (data.email && emailAccountInput) {
+      emailAccountInput.value = data.email;
+    }
+  } catch (error) {
+    console.error(error);
+    emailStatus.textContent = '无法读取邮箱配置。';
+  }
+}
+
+async function updateEmailConfig(payload) {
+  const response = await fetch('/api/email-config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const { message } = await response.json().catch(() => ({ message: '保存失败' }));
+    throw new Error(message || '保存失败');
+  }
+}
+
 if (clearForm) {
   clearForm.addEventListener('submit', async event => {
     event.preventDefault();
@@ -84,4 +127,50 @@ if (clearForm) {
   });
 }
 
+if (emailForm) {
+  emailForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!emailAccountInput || !emailPasswordInput || !emailAdminPasswordInput) return;
+
+    const payload = {
+      email: emailAccountInput.value.trim(),
+      password: emailPasswordInput.value.trim(),
+      adminPassword: emailAdminPasswordInput.value.trim()
+    };
+
+    if (!payload.email || !payload.password || !payload.adminPassword) {
+      if (emailSaveStatus) {
+        emailSaveStatus.textContent = '请填写完整信息。';
+        emailSaveStatus.style.color = '#ef4444';
+      }
+      return;
+    }
+
+    const submitBtn = emailForm.querySelector('button');
+    submitBtn.disabled = true;
+    submitBtn.textContent = '保存中...';
+    if (emailSaveStatus) emailSaveStatus.textContent = '';
+
+    try {
+      await updateEmailConfig(payload);
+      if (emailSaveStatus) {
+        emailSaveStatus.textContent = '邮箱配置已更新。';
+        emailSaveStatus.style.color = '#10b981';
+      }
+      emailPasswordInput.value = '';
+      emailAdminPasswordInput.value = '';
+      await loadEmailConfig();
+    } catch (error) {
+      if (emailSaveStatus) {
+        emailSaveStatus.textContent = error.message;
+        emailSaveStatus.style.color = '#ef4444';
+      }
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = '保存邮箱设置';
+    }
+  });
+}
+
 loadWishlist();
+loadEmailConfig();

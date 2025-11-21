@@ -8,7 +8,7 @@
   <style>
     header p { margin-top: 0.5rem; }
     table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    th, td { padding: 0.75rem; border-bottom: 1px solid rgba(15,23,42,0.08); text-align: left; }
   </style>
 </head>
 <body>
@@ -25,6 +25,19 @@
       </form>
       <p id="clearStatus" style="min-height:1.5rem;color:#93c5fd;margin-top:-0.5rem;"></p>
       <div id="adminWishlist" class="wishlist empty-state">加载中...</div>
+    </section>
+
+    <section>
+      <h2>邮件通知设置</h2>
+      <p id="emailStatus" class="empty-state" style="text-align:left;">加载中...</p>
+      <form id="emailConfigForm" class="stacked-form">
+        <input type="email" id="emailAccount" placeholder="通知邮箱账号 (SMTP 用户名)" required>
+        <input type="password" id="emailPassword" placeholder="邮箱密码 / 授权码" required>
+        <input type="password" id="emailAdminPassword" placeholder="后台密码" required>
+        <button type="submit">保存邮箱设置</button>
+      </form>
+      <p style="font-size:0.9rem;color:#64748b;margin-top:0.5rem;">提示：SMTP 主机、端口等参数请在服务器 .env 中配置，仅账号与密码可在此修改。</p>
+      <p id="emailSaveStatus" style="min-height:1.5rem;color:#10b981;"></p>
     </section>
   </main>
 
