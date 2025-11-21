@@ -1,0 +1,153 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --page-bg: #f8fafc;
+  --card-bg: #ffffff;
+  --primary-text: #0f172a;
+  --muted-text: #64748b;
+  --border-color: rgba(15, 23, 42, 0.08);
+  --gradient: linear-gradient(90deg, #38df91, #bfffe3);
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: var(--page-bg);
+  color: var(--primary-text);
+}
+
+header {
+  background: #ffffff;
+  padding: 1.5rem;
+  text-align: center;
+  border-bottom: 1px solid var(--border-color);
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  background-image: var(--gradient);
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+main {
+  max-width: 960px;
+  margin: 2rem auto;
+  padding: 0 1rem 3rem;
+}
+
+section {
+  background: var(--card-bg);
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 15px 40px rgba(15, 23, 42, 0.08);
+}
+
+section h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.3rem;
+  background-image: var(--gradient);
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+form {
+  display: flex;
+  gap: 0.75rem;
+}
+
+input[type="text"] {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #d7dee7;
+  font-size: 1rem;
+  background: #ffffff;
+  color: var(--primary-text);
+}
+
+button {
+  border: none;
+  padding: 0.75rem 1.2rem;
+  border-radius: 8px;
+  background-image: linear-gradient(120deg, #24b17b, #60b8847a);
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 10px 20px rgba(45, 212, 191, 0.3);
+}
+
+button:disabled {
+  background-image: none;
+  background: #cbd5f5;
+  color: #475569;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(26, 187, 125, 0.308);
+}
+
+.results, .wishlist {
+  display: grid;
+  gap: 1rem;
+}
+
+.card {
+  background: var(--card-bg);
+  padding: 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  display: flex;
+  gap: 1rem;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+}
+
+.card img {
+  width: 100px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.card-content {
+  flex: 1;
+}
+
+.card-title {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.card-meta {
+  margin: 0.3rem 0 0.6rem;
+  font-size: 0.9rem;
+  color: var(--muted-text);
+}
+
+.empty-state {
+  color: var(--muted-text);
+  text-align: center;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}

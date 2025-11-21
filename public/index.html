@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>电影愿望单</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <h1>电影 / 电视剧 愿望单</h1>
+    <p>搜索 TMDB，挑选你想看的作品，并将其加入愿望单。</p>
+  </header>
+  <main>
+    <section>
+      <h2>搜索 TMDB</h2>
+      <form id="searchForm">
+        <input type="text" id="searchInput" placeholder="输入电影或剧集名称" autocomplete="off" required>
+        <button type="submit">搜索</button>
+      </form>
+    </section>
+
+    <section>
+      <div class="section-header">
+        <h2>搜索结果（前 10 条）</h2>
+      </div>
+      <div id="results" class="results empty-state">请先搜索想看的电影/剧集</div>
+    </section>
+
+    <section>
+      <div class="section-header">
+        <h2>愿望单</h2>
+        <p>在 <a href="/admin.html" target="_blank">后台页面</a> 可以单独查看名称和 IMDb ID</p>
+      </div>
+      <div id="wishlist" class="wishlist empty-state">加载中...</div>
+    </section>
+  </main>
+
+  <script src="/app.js" type="module"></script>
+</body>
+</html>
