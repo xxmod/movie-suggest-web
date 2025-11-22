@@ -133,7 +133,16 @@ async function fetchImdbId(mediaType, tmdbId) {
   }
 }
 
-async function notifyAdmin(newEntry) {
+// Best-effort extraction of the submitter IP for logging/notifications.
+function getRequestIp(req) {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.trim()) {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.socket?.remoteAddress || req.ip || '未知IP';
+}
+
+async function notifyAdmin(newEntry, submitterIp = '未知IP') {
   const config = await readEmailConfig();
   if (!isEmailConfigured(config)) {
     console.warn('Email notification is not configured. Skipping notification.');
@@ -158,7 +167,8 @@ async function notifyAdmin(newEntry) {
       `媒体类型：${newEntry.mediaType === 'movie' ? '电影' : '剧集'}`,
       `TMDB ID：${newEntry.tmdbId}`,
       `IMDb ID：${newEntry.imdbId || '暂无'}`,
-      `加入时间：${newEntry.createdAt}`
+      `加入时间：${newEntry.createdAt}`,
+      `提交IP：${submitterIp}`
     ];
 
     await transporter.sendMail({
@@ -293,7 +303,8 @@ app.post('/api/wishlist', async (req, res) => {
     await writeWishlist(wishlist);
     res.status(201).json(newEntry);
 
-    notifyAdmin(newEntry);
+    const submitterIp = getRequestIp(req);
+    notifyAdmin(newEntry, submitterIp);
   } catch (error) {
     console.error('Failed to update wishlist:', error.message);
     res.status(500).json({ message: 'Unable to update wishlist.' });

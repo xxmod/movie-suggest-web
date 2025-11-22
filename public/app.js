@@ -6,6 +6,11 @@ const addedContainer = document.getElementById('addedList');
 
 let wishlistCache = [];
 
+function truncateText(text, maxLength = 100) {
+  if (!text) return '';
+  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+}
+
 searchForm.addEventListener('submit', async event => {
   event.preventDefault();
   const query = searchInput.value.trim();
@@ -72,7 +77,7 @@ function renderResults(items = []) {
     meta.textContent = `评分：${item.rating ?? '暂无'} ｜ IMDb：${item.imdbId || '暂无'} `;
 
     const overview = document.createElement('p');
-    overview.textContent = item.overview;
+    overview.textContent = truncateText(item.overview);
 
     const actions = document.createElement('div');
 
