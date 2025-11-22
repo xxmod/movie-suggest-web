@@ -118,7 +118,16 @@ function renderWishlistTable() {
     row.appendChild(statusTd);
 
     const imdbTd = document.createElement('td');
-    imdbTd.textContent = item.imdbId || '暂无';
+    if (item.imdbId) {
+      const link = document.createElement('a');
+      link.href = `https://thepiratebay.org/search.php?q=${encodeURIComponent(item.imdbId)}`;
+      link.textContent = item.imdbId;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      imdbTd.appendChild(link);
+    } else {
+      imdbTd.textContent = '暂无';
+    }
     row.appendChild(imdbTd);
 
     const dateTd = document.createElement('td');
