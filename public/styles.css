@@ -116,6 +116,11 @@ button:hover:not(:disabled) {
   padding-left: 0.75rem;
 }
 
+.wishlist.on-hold-list {
+  border-left: 3px solid #fcd34d;
+  padding-left: 0.75rem;
+}
+
 .card {
   background: var(--card-bg);
   padding: 1rem;
@@ -130,6 +135,12 @@ button:hover:not(:disabled) {
   background: #f0fdf4;
   border-color: #86efac;
   box-shadow: 0 10px 25px rgba(34, 197, 94, 0.15);
+}
+
+.card.on-hold-card {
+  background: #fffbeb;
+  border-color: #fde68a;
+  box-shadow: 0 10px 25px rgba(245, 158, 11, 0.15);
 }
 
 .card img {

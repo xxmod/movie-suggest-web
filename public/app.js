@@ -3,6 +3,7 @@ const searchInput = document.getElementById('searchInput');
 const resultsContainer = document.getElementById('results');
 const wishlistContainer = document.getElementById('wishlist');
 const addedContainer = document.getElementById('addedList');
+const onHoldContainer = document.getElementById('onHoldList');
 
 let wishlistCache = [];
 
@@ -40,6 +41,7 @@ async function fetchWishlist() {
     console.error(error);
     setContainerState(wishlistContainer, '无法加载愿望单');
     setContainerState(addedContainer, '无法加载已添加列表', 'wishlist added-list empty-state');
+    setContainerState(onHoldContainer, '无法加载暂挂区', 'wishlist on-hold-list empty-state');
   }
 }
 
@@ -129,7 +131,8 @@ async function addToWishlist(item, buttonEl) {
 }
 
 function renderWishlistSections() {
-  const pendingItems = wishlistCache.filter(item => !item.addedAt);
+  const onHoldItems = wishlistCache.filter(item => item.onHoldAt && !item.addedAt);
+  const pendingItems = wishlistCache.filter(item => !item.addedAt && !item.onHoldAt);
   const addedItems = wishlistCache.filter(item => item.addedAt);
 
   renderCardList(pendingItems, wishlistContainer, '愿望单为空，去添加一些吧！', {
@@ -137,6 +140,13 @@ function renderWishlistSections() {
     metaKey: 'createdAt',
     emptyClass: 'wishlist empty-state',
     containerClass: 'wishlist'
+  });
+  renderCardList(onHoldItems, onHoldContainer, '暂挂区为空。', {
+    metaLabel: '暂挂时间',
+    metaKey: 'onHoldAt',
+    cardClass: 'on-hold-card',
+    emptyClass: 'wishlist on-hold-list empty-state',
+    containerClass: 'wishlist on-hold-list'
   });
   renderCardList(addedItems, addedContainer, '还没有标记“已添加”的作品。', {
     metaLabel: '标记时间',

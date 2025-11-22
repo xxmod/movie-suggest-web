@@ -9,12 +9,16 @@ const deleteStatus = document.getElementById('deleteStatus');
 const deletePasswordInput = document.getElementById('deleteAdminPassword');
 const markAddedBtn = document.getElementById('markAddedBtn');
 const markStatus = document.getElementById('markStatus');
+const holdStatus = document.getElementById('holdStatus');
 const emailStatus = document.getElementById('emailStatus');
 const emailForm = document.getElementById('emailConfigForm');
 const emailAccountInput = document.getElementById('emailAccount');
 const emailPasswordInput = document.getElementById('emailPassword');
 const emailAdminPasswordInput = document.getElementById('emailAdminPassword');
 const emailSaveStatus = document.getElementById('emailSaveStatus');
+const onHoldListContainer = document.getElementById('onHoldList');
+const addOnHoldBtn = document.getElementById('addOnHoldBtn');
+const removeOnHoldBtn = document.getElementById('removeOnHoldBtn');
 
 let wishlistData = [];
 const selectedTmdbIds = new Set();
@@ -27,6 +31,7 @@ async function loadWishlist() {
     wishlistData = await response.json();
     selectedTmdbIds.clear();
     renderWishlistTable();
+    renderOnHoldList();
   } catch (error) {
     console.error(error);
     wishlistData = [];
@@ -34,6 +39,10 @@ async function loadWishlist() {
     masterCheckbox = null;
     adminContainer.className = 'wishlist empty-state';
     adminContainer.textContent = '无法加载愿望单';
+    if (onHoldListContainer) {
+      onHoldListContainer.className = 'wishlist on-hold-list empty-state';
+      onHoldListContainer.textContent = '无法加载暂挂区';
+    }
   } finally {
     updateSelectionUi();
   }
@@ -93,6 +102,7 @@ function renderWishlistTable() {
       }
       setDeleteStatus('');
       setMarkStatus('');
+      setHoldStatus('');
       updateSelectionUi();
       syncMasterCheckbox(visibleItems.length);
     });
@@ -109,10 +119,14 @@ function renderWishlistTable() {
 
     const statusTd = document.createElement('td');
     const pill = document.createElement('span');
-    pill.className = `status-pill ${item.addedAt ? 'added' : 'pending'}`;
-    pill.textContent = item.addedAt ? '已添加' : '待添加';
-    if (item.addedAt) {
-      pill.title = `标记时间：${new Date(item.addedAt).toLocaleString()}`;
+    const statusClass = item.addedAt ? 'added' : item.onHoldAt ? 'on-hold' : 'pending';
+    const statusLabel = item.addedAt ? '已添加' : item.onHoldAt ? '暂挂' : '待添加';
+    pill.className = `status-pill ${statusClass}`;
+    pill.textContent = statusLabel;
+    if (item.addedAt || item.onHoldAt) {
+      const timestamp = item.addedAt || item.onHoldAt;
+      const label = item.addedAt ? '标记时间' : '暂挂时间';
+      pill.title = `${label}：${new Date(timestamp).toLocaleString()}`;
     }
     statusTd.appendChild(pill);
     row.appendChild(statusTd);
@@ -175,6 +189,47 @@ function renderWishlistTable() {
   syncMasterCheckbox(visibleItems.length);
 }
 
+function renderOnHoldList() {
+  if (!onHoldListContainer) return;
+
+  const onHoldItems = wishlistData.filter(item => item.onHoldAt);
+  if (!onHoldItems.length) {
+    setOnHoldListState('暂挂区为空。');
+    return;
+  }
+
+  onHoldListContainer.className = 'wishlist on-hold-list';
+  onHoldListContainer.innerHTML = '';
+
+  onHoldItems.slice().reverse().forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    const content = document.createElement('div');
+    content.className = 'card-content';
+
+    const title = document.createElement('h3');
+    title.className = 'card-title';
+    title.textContent = `${item.title} (${item.mediaType === 'movie' ? '电影' : '剧集'})`;
+
+    const meta = document.createElement('p');
+    meta.className = 'card-meta';
+    const holdTime = item.onHoldAt ? new Date(item.onHoldAt).toLocaleString() : '暂无';
+    meta.textContent = `IMDb：${item.imdbId || '暂无'} ｜ 暂挂时间：${holdTime}`;
+
+    content.appendChild(title);
+    content.appendChild(meta);
+    card.appendChild(content);
+    onHoldListContainer.appendChild(card);
+  });
+}
+
+function setOnHoldListState(message) {
+  if (!onHoldListContainer) return;
+  onHoldListContainer.className = 'wishlist on-hold-list empty-state';
+  onHoldListContainer.textContent = message;
+}
+
 function handleMasterToggle(event) {
   if (!wishlistData.length) return;
   if (event.target.checked) {
@@ -184,6 +239,7 @@ function handleMasterToggle(event) {
   }
   setDeleteStatus('');
   setMarkStatus('');
+  setHoldStatus('');
   renderWishlistTable();
   updateSelectionUi();
 }
@@ -207,12 +263,20 @@ function updateSelectionUi() {
   const hasSelection = selectedTmdbIds.size > 0;
   const hasPassword = deletePasswordInput ? Boolean(deletePasswordInput.value.trim()) : true;
   const hasMarkableSelection = wishlistData.some(item => selectedTmdbIds.has(String(item.tmdbId)) && !item.addedAt);
+  const hasHoldableSelection = wishlistData.some(item => selectedTmdbIds.has(String(item.tmdbId)) && !item.onHoldAt);
+  const hasReleasableSelection = wishlistData.some(item => selectedTmdbIds.has(String(item.tmdbId)) && item.onHoldAt);
 
   if (deleteSelectedBtn) {
     deleteSelectedBtn.disabled = !(hasSelection && hasPassword);
   }
   if (markAddedBtn) {
     markAddedBtn.disabled = !(hasPassword && hasMarkableSelection);
+  }
+  if (addOnHoldBtn) {
+    addOnHoldBtn.disabled = !(hasPassword && hasHoldableSelection);
+  }
+  if (removeOnHoldBtn) {
+    removeOnHoldBtn.disabled = !(hasPassword && hasReleasableSelection);
   }
   if (selectAllBtn) {
     selectAllBtn.disabled = !hasItems;
@@ -232,6 +296,12 @@ function setMarkStatus(message, color = '#10b981') {
   if (!markStatus) return;
   markStatus.textContent = message;
   markStatus.style.color = message ? color : '#10b981';
+}
+
+function setHoldStatus(message, color = '#facc15') {
+  if (!holdStatus) return;
+  holdStatus.textContent = message;
+  holdStatus.style.color = message ? color : '#facc15';
 }
 
 async function clearWishlist(password) {
@@ -272,6 +342,21 @@ async function markWishlistItems(tmdbIds, password) {
   if (!response.ok) {
     const { message } = await response.json().catch(() => ({ message: '标记失败' }));
     throw new Error(message || '标记失败');
+  }
+
+  return response.json();
+}
+
+async function updateOnHoldItems(tmdbIds, password, action = 'add') {
+  const response = await fetch('/api/wishlist/on-hold', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tmdbIds, password, action })
+  });
+
+  if (!response.ok) {
+    const { message } = await response.json().catch(() => ({ message: '操作失败' }));
+    throw new Error(message || '操作失败');
   }
 
   return response.json();
@@ -320,6 +405,7 @@ if (selectAllBtn) {
     wishlistData.forEach(item => selectedTmdbIds.add(String(item.tmdbId)));
     setDeleteStatus('');
     setMarkStatus('');
+    setHoldStatus('');
     renderWishlistTable();
     updateSelectionUi();
   });
@@ -330,6 +416,7 @@ if (clearSelectionBtn) {
     selectedTmdbIds.clear();
     setDeleteStatus('');
     setMarkStatus('');
+    setHoldStatus('');
     renderWishlistTable();
     updateSelectionUi();
   });
@@ -351,6 +438,7 @@ if (deleteSelectedBtn) {
     deleteSelectedBtn.textContent = '删除中...';
     setDeleteStatus('');
     setMarkStatus('');
+    setHoldStatus('');
 
     try {
       const result = await deleteWishlistItems(ids, password);
@@ -374,6 +462,7 @@ if (deletePasswordInput) {
   deletePasswordInput.addEventListener('input', () => {
     setDeleteStatus('');
     setMarkStatus('');
+    setHoldStatus('');
     updateSelectionUi();
   });
 }
@@ -402,6 +491,7 @@ if (markAddedBtn) {
     markAddedBtn.disabled = true;
     markAddedBtn.textContent = '标记中...';
     setMarkStatus('');
+    setHoldStatus('');
 
     try {
       const result = await markWishlistItems(markableIds, password);
@@ -415,6 +505,96 @@ if (markAddedBtn) {
       setMarkStatus(error.message || '标记失败', '#ef4444');
     } finally {
       markAddedBtn.textContent = '标记为已添加';
+      updateSelectionUi();
+    }
+  });
+}
+
+if (addOnHoldBtn) {
+  addOnHoldBtn.addEventListener('click', async () => {
+    const ids = Array.from(selectedTmdbIds);
+    if (!ids.length) return;
+
+    const password = deletePasswordInput ? deletePasswordInput.value.trim() : '';
+    if (!password) {
+      setHoldStatus('请输入后台密码。', '#f97316');
+      deletePasswordInput?.focus();
+      return;
+    }
+
+    const holdableIds = wishlistData
+      .filter(item => !item.onHoldAt && ids.includes(String(item.tmdbId)))
+      .map(item => String(item.tmdbId));
+
+    if (!holdableIds.length) {
+      setHoldStatus('选中的条目已在暂挂区。', '#38bdf8');
+      return;
+    }
+
+    addOnHoldBtn.disabled = true;
+    addOnHoldBtn.textContent = '处理中...';
+    setHoldStatus('');
+    setDeleteStatus('');
+    setMarkStatus('');
+
+    try {
+      const result = await updateOnHoldItems(holdableIds, password, 'add');
+      setHoldStatus(result?.message || `已加入暂挂区 ${holdableIds.length} 项。`, '#eab308');
+      if (deletePasswordInput) {
+        deletePasswordInput.value = '';
+      }
+      selectedTmdbIds.clear();
+      await loadWishlist();
+    } catch (error) {
+      setHoldStatus(error.message || '操作失败', '#ef4444');
+    } finally {
+      addOnHoldBtn.textContent = '加入暂挂区';
+      addOnHoldBtn.disabled = false;
+      updateSelectionUi();
+    }
+  });
+}
+
+if (removeOnHoldBtn) {
+  removeOnHoldBtn.addEventListener('click', async () => {
+    const ids = Array.from(selectedTmdbIds);
+    if (!ids.length) return;
+
+    const password = deletePasswordInput ? deletePasswordInput.value.trim() : '';
+    if (!password) {
+      setHoldStatus('请输入后台密码。', '#f97316');
+      deletePasswordInput?.focus();
+      return;
+    }
+
+    const releasableIds = wishlistData
+      .filter(item => item.onHoldAt && ids.includes(String(item.tmdbId)))
+      .map(item => String(item.tmdbId));
+
+    if (!releasableIds.length) {
+      setHoldStatus('选中的条目不在暂挂区。', '#38bdf8');
+      return;
+    }
+
+    removeOnHoldBtn.disabled = true;
+    removeOnHoldBtn.textContent = '处理中...';
+    setHoldStatus('');
+    setDeleteStatus('');
+    setMarkStatus('');
+
+    try {
+      const result = await updateOnHoldItems(releasableIds, password, 'remove');
+      setHoldStatus(result?.message || `已移出暂挂区 ${releasableIds.length} 项。`, '#eab308');
+      if (deletePasswordInput) {
+        deletePasswordInput.value = '';
+      }
+      selectedTmdbIds.clear();
+      await loadWishlist();
+    } catch (error) {
+      setHoldStatus(error.message || '操作失败', '#ef4444');
+    } finally {
+      removeOnHoldBtn.textContent = '移出暂挂区';
+      removeOnHoldBtn.disabled = false;
       updateSelectionUi();
     }
   });

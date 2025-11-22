@@ -53,12 +53,44 @@ async function readWishlist() {
 
   return parsed.map(item => ({
     ...item,
-    addedAt: item?.addedAt ?? null
+    addedAt: item?.addedAt ?? null,
+    onHoldAt: item?.onHoldAt ?? null
   }));
 }
 
 async function writeWishlist(data) {
   await fs.writeFile(wishlistPath, JSON.stringify(data, null, 2), 'utf-8');
+}
+
+async function setWishlistItemsOnHold(tmdbIds, shouldHold) {
+  const normalized = tmdbIds.map(id => String(id));
+  const targetIds = new Set(normalized);
+  const wishlist = await readWishlist();
+  let updatedCount = 0;
+
+  const updated = wishlist.map(item => {
+    if (!targetIds.has(String(item.tmdbId))) {
+      return item;
+    }
+
+    const isOnHold = Boolean(item.onHoldAt);
+    if (shouldHold && !isOnHold) {
+      updatedCount += 1;
+      return { ...item, onHoldAt: new Date().toISOString() };
+    }
+    if (!shouldHold && isOnHold) {
+      updatedCount += 1;
+      const { onHoldAt, ...rest } = item;
+      return { ...rest, onHoldAt: null };
+    }
+    return item;
+  });
+
+  if (updatedCount > 0) {
+    await writeWishlist(updated);
+  }
+
+  return { updatedCount };
 }
 
 async function removeWishlistItems(tmdbIds) {
@@ -296,7 +328,8 @@ app.post('/api/wishlist', async (req, res) => {
       mediaType,
       imdbId: imdbId || null,
       createdAt: new Date().toISOString(),
-      addedAt: null
+      addedAt: null,
+      onHoldAt: null
     };
 
     wishlist.push(newEntry);
@@ -403,6 +436,47 @@ app.patch('/api/wishlist/added', async (req, res) => {
   } catch (error) {
     console.error('Failed to mark wishlist items as added:', error.message);
     res.status(500).json({ message: 'Unable to mark wishlist items as added.' });
+  }
+});
+
+app.patch('/api/wishlist/on-hold', async (req, res) => {
+  if (!ADMIN_PASSWORD) {
+    return res.status(500).json({ message: 'ADMIN_PASSWORD is not configured.' });
+  }
+
+  const body = req.body || {};
+  const tmdbIds = Array.isArray(body.tmdbIds) ? body.tmdbIds.filter(Boolean) : [];
+  const password = body.password;
+  const action = String(body.action || 'add').toLowerCase();
+
+  if (!tmdbIds.length) {
+    return res.status(400).json({ message: 'tmdbIds must be a non-empty array.' });
+  }
+
+  if (!password) {
+    return res.status(400).json({ message: 'Password is required.' });
+  }
+
+  if (password !== ADMIN_PASSWORD) {
+    return res.status(403).json({ message: '密码错误。' });
+  }
+
+  if (!['add', 'remove'].includes(action)) {
+    return res.status(400).json({ message: 'action 必须是 "add" 或 "remove"。' });
+  }
+
+  try {
+    const shouldHold = action === 'add';
+    const { updatedCount } = await setWishlistItemsOnHold(tmdbIds, shouldHold);
+    if (!updatedCount) {
+      return res.json({ message: shouldHold ? '选中的条目已在暂挂区。' : '选中的条目不在暂挂区。', updated: 0 });
+    }
+
+    const actionText = shouldHold ? '加入暂挂区' : '移出暂挂区';
+    res.json({ message: `已${actionText} ${updatedCount} 项。`, updated: updatedCount });
+  } catch (error) {
+    console.error('Failed to update on-hold status:', error.message);
+    res.status(500).json({ message: 'Unable to update on-hold status.' });
   }
 });
 
