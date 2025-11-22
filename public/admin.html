@@ -13,6 +13,23 @@
     .status-pill { display:inline-flex; align-items:center; padding:0.15rem 0.45rem; border-radius:999px; font-size:0.8rem; }
     .status-pill.added { background:#bbf7d0; color:#166534; }
     .status-pill.pending { background:#e2e8f0; color:#475569; }
+    .imdb-wrapper { position:relative; display:inline-flex; align-items:center; gap:0.35rem; }
+    .imdb-id-label { font-weight:600; color:#15803d; cursor:pointer; }
+    .imdb-actions {
+      position:absolute; top:100%; left:0; display:flex; gap:0.35rem; padding:0.35rem 0.5rem;
+      background:linear-gradient(135deg,#ecfccb,#39d670);
+      border:1px solid rgba(22,101,52,0.25); border-radius:0.6rem;
+      box-shadow:0 10px 30px rgba(15,23,42,0.18);
+      opacity:0; pointer-events:none; transform:translateY(0.35rem);
+      transition:opacity 0.18s ease, transform 0.18s ease; z-index:10;
+    }
+    .imdb-wrapper:hover .imdb-actions, .imdb-wrapper:focus-within .imdb-actions { opacity:1; pointer-events:auto; transform:translateY(0); }
+    .imdb-action-link {
+      font-size:0.85rem; color:#064e3b; text-decoration:none; padding:0.2rem 0.75rem;
+      border-radius:999px; background:linear-gradient(135deg,#4ade80,#22c55e);
+      border:1px solid rgba(59, 199, 154, 0.452); white-space:nowrap; font-weight:600;
+    }
+    .imdb-action-link:hover { background:linear-gradient(135deg,#86efac,#4ade80); color:#022c22; }
   </style>
 </head>
 <body>

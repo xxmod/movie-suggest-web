@@ -119,12 +119,39 @@ function renderWishlistTable() {
 
     const imdbTd = document.createElement('td');
     if (item.imdbId) {
-      const link = document.createElement('a');
-      link.href = `https://thepiratebay.org/search.php?q=${encodeURIComponent(item.imdbId)}`;
-      link.textContent = item.imdbId;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      imdbTd.appendChild(link);
+      const imdbWrapper = document.createElement('div');
+      imdbWrapper.className = 'imdb-wrapper';
+
+      const imdbLabel = document.createElement('span');
+      imdbLabel.className = 'imdb-id-label';
+      imdbLabel.textContent = item.imdbId;
+      imdbLabel.tabIndex = 0;
+      imdbLabel.setAttribute('aria-label', `${item.imdbId} 的操作`);
+
+      const imdbActions = document.createElement('div');
+      imdbActions.className = 'imdb-actions';
+
+      // Provide quick actions for torrent download or subtitle search.
+      const downloadLink = document.createElement('a');
+      downloadLink.className = 'imdb-action-link';
+      downloadLink.href = `https://thepiratebay.org/search.php?q=${encodeURIComponent(item.imdbId)}`;
+      downloadLink.target = '_blank';
+      downloadLink.rel = 'noopener noreferrer';
+      downloadLink.textContent = '下载';
+
+      const subtitleLink = document.createElement('a');
+      subtitleLink.className = 'imdb-action-link';
+      subtitleLink.href = `https://subhd.tv/search/${encodeURIComponent(item.imdbId)}`;
+      subtitleLink.target = '_blank';
+      subtitleLink.rel = 'noopener noreferrer';
+      subtitleLink.textContent = '字幕';
+
+      imdbActions.appendChild(downloadLink);
+      imdbActions.appendChild(subtitleLink);
+
+      imdbWrapper.appendChild(imdbLabel);
+      imdbWrapper.appendChild(imdbActions);
+      imdbTd.appendChild(imdbWrapper);
     } else {
       imdbTd.textContent = '暂无';
     }
