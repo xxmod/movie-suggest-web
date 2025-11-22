@@ -166,8 +166,12 @@ function renderWishlistTable() {
 
   table.appendChild(tbody);
 
+  const scrollWrapper = document.createElement('div');
+  scrollWrapper.className = 'wishlist-table-wrapper';
+  scrollWrapper.appendChild(table);
+
   adminContainer.innerHTML = '';
-  adminContainer.appendChild(table);
+  adminContainer.appendChild(scrollWrapper);
   syncMasterCheckbox(visibleItems.length);
 }
 

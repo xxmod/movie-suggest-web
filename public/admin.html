@@ -17,8 +17,8 @@
     .imdb-id-label { font-weight:600; color:#15803d; cursor:pointer; }
     .imdb-actions {
       position:absolute; top:100%; left:0; display:flex; gap:0.35rem; padding:0.35rem 0.5rem;
-      background:linear-gradient(135deg,#ecfccb,#39d670);
-      border:1px solid rgba(22,101,52,0.25); border-radius:0.6rem;
+      background:linear-gradient(135deg,rgb(248 , 250, 252),rgb(248 , 250, 252));
+      border:1px solid rgba(58, 156, 96, 0.25); border-radius:0.6rem;
       box-shadow:0 10px 30px rgba(15,23,42,0.18);
       opacity:0; pointer-events:none; transform:translateY(0.35rem);
       transition:opacity 0.18s ease, transform 0.18s ease; z-index:10;
@@ -26,10 +26,26 @@
     .imdb-wrapper:hover .imdb-actions, .imdb-wrapper:focus-within .imdb-actions { opacity:1; pointer-events:auto; transform:translateY(0); }
     .imdb-action-link {
       font-size:0.85rem; color:#064e3b; text-decoration:none; padding:0.2rem 0.75rem;
-      border-radius:999px; background:linear-gradient(135deg,#4ade80,#22c55e);
-      border:1px solid rgba(59, 199, 154, 0.452); white-space:nowrap; font-weight:600;
+      border-radius:999px; background:linear-gradient(135deg,#50eb96,#3ccf7e);
+      border:1px solid rgba(75, 197, 150, 0.616); white-space:nowrap; font-weight:600;
     }
-    .imdb-action-link:hover { background:linear-gradient(135deg,#86efac,#4ade80); color:#022c22; }
+    .imdb-action-link:hover { background:linear-gradient(135deg,#9edab4,#7dd69e); color:#022c22; }
+    #adminWishlist { display:block; width:100%; }
+    #adminWishlist .wishlist-table-wrapper {
+      width:100%;
+      overflow-x:auto;
+      overflow-y:hidden;
+      -webkit-overflow-scrolling:touch;
+      border-radius:0.85rem;
+      border:1px solid rgba(15,23,42,0.08);
+      background:#fff;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,0.4);
+    }
+    #adminWishlist .wishlist-table-wrapper table { min-width:720px; }
+    @media (max-width:640px) {
+      th, td { padding:0.6rem; font-size:0.95rem; white-space:nowrap; }
+      #adminWishlist .wishlist-table-wrapper table { min-width:560px; }
+    }
   </style>
 </head>
 <body>
